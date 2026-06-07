@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}数据看板 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">📊 数据看板</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card primary p-3">
+            <div class="card-body">
+                <h6 class="text-muted">总用户数</h6>
+                <h2 class="text-primary">{{ stats.total_users }}</h2>
+                <p class="mb-0">
+                    <span class="text-success">↑ 今日新增 {{ stats.new_users }}</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card success p-3">
+            <div class="card-body">
+                <h6 class="text-muted">总曝光量</h6>
+                <h2 class="text-success">{{ "{:,}".format(stats.total_impressions) }}</h2>
+                <p class="mb-0">
+                    <span class="text-info">点击率 {{ "%.2f"|format(stats.ctr * 100) }}%</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning p-3">
+            <div class="card-body">
+                <h6 class="text-muted">总点击量</h6>
+                <h2 class="text-warning">{{ "{:,}".format(stats.total_clicks) }}</h2>
+                <p class="mb-0">
+                    <span class="text-info">转化率 {{ "%.2f"|format(stats.cvr * 100) }}%</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card danger p-3">
+            <div class="card-body">
+                <h6 class="text-muted">预估收入</h6>
+                <h2 class="text-danger">¥{{ "%.2f"|format(stats.total_revenue) }}</h2>
+                <p class="mb-0">
+                    <span class="text-info">客单价 ¥{{ "%.2f"|format(stats.avg_order_value) }}</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📈 近7天效果趋势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🔥 热门推荐商品 TOP 10</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>商品ID</th>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>点击量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_items %}
+                            <tr>
+                                <td>
+                                    {% if loop.index <= 3 %}
+                                    <span class="badge bg-danger">{{ loop.index }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ loop.index }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.item_id }}</td>
+                                <td>{{ item.title }}</td>
+                                <td>
+                                    {% if item.item_type == 'product' %}
+                                    <span class="badge bg-primary">商品</span>
+                                    {% elif item.item_type == 'content' %}
+                                    <span class="badge bg-info">内容</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">活动</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.clicks }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🎯 用户生命周期分布</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="lifecycleChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">⚡ 系统状态</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        推荐规则
+                        <span class="badge bg-primary rounded-pill">{{ stats.rule_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        商品池大小
+                        <span class="badge bg-success rounded-pill">{{ stats.item_pool_size }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        已生成推荐
+                        <span class="badge bg-info rounded-pill">{{ stats.recommendation_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        行为事件数
+                        <span class="badge bg-warning rounded-pill">{{ stats.behavior_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        模型健康度
+                        <span class="badge bg-{{ 'success' if stats.model_health == 'good' else 'warning' }} rounded-pill">
+                            {{ '良好' if stats.model_health == 'good' else '需关注' }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🔧 快捷操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('simulate_behavior') }}" class="btn btn-outline-primary">
+                        🎲 模拟用户行为
+                    </a>
+                    <a href="{{ url_for('generate_all_recommendations') }}" class="btn btn-outline-success">
+                        💡 生成全部推荐
+                    </a>
+                    <a href="{{ url_for('create_rule_page') }}" class="btn btn-outline-warning">
+                        ➕ 创建推荐规则
+                    </a>
+                    <a href="{{ url_for('generate_report') }}" class="btn btn-outline-info">
+                        📄 生成今日报告
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+new Chart(trendCtx, {
+    type: 'line',
+    data: {
+        labels: {{ trend_dates|tojson }},
+        datasets: [
+            {
+                label: 'CTR (%)',
+                data: {{ trend_ctr|tojson }},
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+            },
+            {
+                label: '点击量',
+                data: {{ trend_clicks|tojson }},
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'CTR (%)' }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: '点击量' },
+                grid: { drawOnChartArea: false }
+            }
+        }
+    }
+});
+
+const lifecycleCtx = document.getElementById('lifecycleChart').getContext('2d');
+new Chart(lifecycleCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['新用户', '活跃', '流失风险', '沉睡', '已流失'],
+        datasets: [{
+            data: [{{ lifecycle_dist.new }}, {{ lifecycle_dist.active }}, {{ lifecycle_dist.at_risk }}, {{ lifecycle_dist.dormant }}, {{ lifecycle_dist.churned }}],
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#6b7280', '#ef4444']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { boxWidth: 12, padding: 10 }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}用户详情 - {{ user.user_id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>👤 用户详情 - <code>{{ user.user_id }}</code></h2>
+    <div>
+        <a href="{{ url_for('generate_recommendation', user_id=user.user_id) }}" class="btn btn-success me-2">
+            🔄 重新生成推荐
+        </a>
+        <a href="{{ url_for('users_list') }}" class="btn btn-outline-secondary">
+            返回列表
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📊 用户画像</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>生命周期阶段</span>
+                        {% if user.lifecycle_stage == 'new' %}
+                        <span class="badge bg-primary">新用户</span>
+                        {% elif user.lifecycle_stage == 'active' %}
+                        <span class="badge bg-success">活跃用户</span>
+                        {% elif user.lifecycle_stage == 'at_risk' %}
+                        <span class="badge bg-warning">流失风险</span>
+                        {% elif user.lifecycle_stage == 'dormant' %}
+                        <span class="badge bg-secondary">沉睡用户</span>
+                        {% else %}
+                        <span class="badge bg-danger">已流失</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>总订单数</span>
+                        <strong>{{ user.total_orders }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>总消费金额</span>
+                        <strong>¥{{ "%.2f"|format(user.total_spent) }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>平均客单价</span>
+                        <strong>¥{{ "%.2f"|format(user.avg_order_value) }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>购买频率</span>
+                        <strong>{{ "%.2f"|format(user.purchase_frequency) }} 单/月</strong>
+                    </li>
+                    {% if user.preferred_price_range %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>偏好价格区间</span>
+                        <strong>¥{{ "%.0f"|format(user.preferred_price_range[0]) }} - ¥{{ "%.0f"|format(user.preferred_price_range[1]) }}</strong>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🏷️ 兴趣标签</h5>
+            </div>
+            <div class="card-body">
+                {% for tag, score in user.interest_tags.items() %}
+                <span class="badge-tag" style="background: rgba(59, 130, 246, {{ 0.3 + score/20 }}); color: #1e40af;">
+                    {{ tag }} ({{ "%.1f"|format(score) }})
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📅 活跃时间</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>首次活跃</span>
+                        <span>{{ user.first_active_time[:16] if user.first_active_time else '-' }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>最近活跃</span>
+                        <span>{{ user.last_active_time[:16] if user.last_active_time else '-' }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>最近购买</span>
+                        <span>{{ user.last_purchase_time[:16] if user.last_purchase_time else '-' }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">💡 个性化推荐结果</h5>
+                {% if recommendations %}
+                <span class="text-muted">共 {{ recommendations|length }} 条推荐</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if recommendations %}
+                <div class="row">
+                    {% for rec in recommendations %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card recommend-item h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">{{ rec.title }}</h6>
+                                    {% if rec.item_type == 'product' %}
+                                    <span class="badge bg-primary">商品</span>
+                                    {% elif rec.item_type == 'content' %}
+                                    <span class="badge bg-info">内容</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">活动</span>
+                                    {% endif %}
+                                </div>
+                                {% if rec.category %}
+                                <p class="text-muted small mb-2">{{ rec.category }}</p>
+                                {% endif %}
+                                {% if rec.price %}
+                                <p class="text-danger mb-2">
+                                    <strong>¥{{ "%.2f"|format(rec.price) }}</strong>
+                                    {% if rec.original_price and rec.original_price > rec.price %}
+                                    <span class="text-muted text-decoration-line-through ms-2 small">
+                                        ¥{{ "%.2f"|format(rec.original_price) }}
+                                    </span>
+                                    {% endif %}
+                                </p>
+                                {% endif %}
+                                <p class="small mb-2">
+                                    <span class="text-success">预估CTR: {{ "%.2f"|format(rec.predicted_ctr * 100) }}%</span>
+                                    <span class="text-muted ms-3">得分: {{ "%.3f"|format(rec.score) }}</span>
+                                </p>
+                                {% if rec.reason %}
+                                <p class="text-primary small mb-0">
+                                    <em>💡 {{ rec.reason }}</em>
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p class="mb-3">暂无推荐数据</p>
+                    <a href="{{ url_for('generate_recommendation', user_id=user.user_id) }}" class="btn btn-primary">
+                        点击生成推荐
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📝 最近行为记录</h5>
+            </div>
+            <div class="card-body">
+                {% if behaviors %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>行为类型</th>
+                                <th>渠道</th>
+                                <th>商品ID</th>
+                                <th>类目</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bh in behaviors[:20] %}
+                            <tr>
+                                <td class="small">{{ bh.timestamp[:19] }}</td>
+                                <td>
+                                    {% if bh.behavior_type == 'view' %}
+                                    <span class="badge bg-secondary">浏览</span>
+                                    {% elif bh.behavior_type == 'click' %}
+                                    <span class="badge bg-info">点击</span>
+                                    {% elif bh.behavior_type == 'add_to_cart' %}
+                                    <span class="badge bg-warning">加购</span>
+                                    {% elif bh.behavior_type == 'purchase' %}
+                                    <span class="badge bg-success">购买</span>
+                                    {% elif bh.behavior_type == 'collect' %}
+                                    <span class="badge bg-primary">收藏</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark">{{ bh.behavior_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if bh.channel == 'website' %}
+                                    <span>🌐 网站</span>
+                                    {% elif bh.channel == 'app' %}
+                                    <span>📱 APP</span>
+                                    {% else %}
+                                    <span>💬 小程序</span>
+                                    {% endif %}
+                                </td>
+                                <td><code>{{ bh.item_id or '-' }}</code></td>
+                                <td>{{ bh.category or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center text-muted py-3">暂无行为记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

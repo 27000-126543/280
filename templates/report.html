@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}效果报告 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>📈 效果报告</h2>
+    <div>
+        <a href="{{ url_for('generate_report') }}" class="btn btn-primary me-2">
+            🔄 生成今日报告
+        </a>
+        {% if report_file %}
+        <a href="{{ url_for('download_report', filename=report_file) }}" class="btn btn-success">
+            📥 下载Excel报告
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card primary p-3">
+            <div class="card-body text-center">
+                <h6 class="text-muted">总曝光量</h6>
+                <h2 class="text-primary">{{ "{:,}".format(summary.total_impressions) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card success p-3">
+            <div class="card-body text-center">
+                <h6 class="text-muted">总点击量</h6>
+                <h2 class="text-success">{{ "{:,}".format(summary.total_clicks) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning p-3">
+            <div class="card-body text-center">
+                <h6 class="text-muted">点击率 (CTR)</h6>
+                <h2 class="text-warning">{{ "%.2f"|format(summary.ctr * 100) }}%</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card danger p-3">
+            <div class="card-body text-center">
+                <h6 class="text-muted">转化率 (CVR)</h6>
+                <h2 class="text-danger">{{ "%.2f"|format(summary.cvr * 100) }}%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📊 近30天数据趋势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="mainTrendChart" height="120"></canvas>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🎯 渠道效果对比</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="channelChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📊 AB测试效果</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="abChart" height="180"></canvas>
+                {% if ab_results and ab_results.get('lift') %}
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <h6 class="mb-2">效果提升</h6>
+                        <ul class="mb-0 small">
+                            <li>CTR提升: {{ "%.1f"|format(ab_results['lift']['ctr'] * 100) }}%</li>
+                            <li>转化率提升: {{ "%.1f"|format(ab_results['lift']['cvr'] * 100) }}%</li>
+                            <li>收入提升: {{ "%.1f"|format(ab_results['lift']['revenue'] * 100) }}%</li>
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🤖 模型监控</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>当前CTR</span>
+                            <strong>{{ "%.2f"|format(current_ctr * 100) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-{{ 'success' if current_ctr >= benchmark_ctr else 'warning' }}" 
+                                 style="width: {{ (current_ctr / benchmark_ctr * 100)|int }}%">
+                            </div>
+                        </div>
+                        <small class="text-muted">行业基准: {{ "%.2f"|format(benchmark_ctr * 100) }}%</small>
+                    </div>
+                </div>
+                {% if model_alert %}
+                <div class="alert alert-{{ 'danger' if model_alert.needs_adjustment else 'success' }}">
+                    {% if model_alert.needs_adjustment %}
+                    <strong>⚠️ 需要调整</strong>
+                    <p class="mb-0 small">已连续 {{ model_alert.below_benchmark_days }} 天低于基准</p>
+                    {% else %}
+                    <strong>✅ 运行正常</strong>
+                    <p class="mb-0 small">模型表现良好</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">💰 收入统计</h5>
+            </div>
+            <div class="card-body">
+                <h3 class="text-center text-success mb-3">¥{{ "%.2f"|format(summary.total_revenue) }}</h3>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span>总转化数</span>
+                        <strong>{{ summary.total_conversions }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span>平均客单价</span>
+                        <strong>¥{{ "%.2f"|format(summary.avg_order_value) }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const mainCtx = document.getElementById('mainTrendChart').getContext('2d');
+new Chart(mainCtx, {
+    type: 'line',
+    data: {
+        labels: {{ trend_dates|tojson }},
+        datasets: [
+            {
+                label: 'CTR (%)',
+                data: {{ trend_ctr|tojson }},
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+            },
+            {
+                label: '收入 (¥)',
+                data: {{ trend_revenue|tojson }},
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'CTR (%)' } },
+            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: '收入 (¥)' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+
+const channelCtx = document.getElementById('channelChart').getContext('2d');
+new Chart(channelCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ channel_labels|tojson }},
+        datasets: [
+            { label: '曝光量', data: {{ channel_impressions|tojson }}, backgroundColor: 'rgba(59, 130, 246, 0.7)' },
+            { label: '点击量', data: {{ channel_clicks|tojson }}, backgroundColor: 'rgba(16, 185, 129, 0.7)' }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+const abCtx = document.getElementById('abChart').getContext('2d');
+new Chart(abCtx, {
+    type: 'bar',
+    data: {
+        labels: ['对照组', '实验组'],
+        datasets: [
+            { label: 'CTR (%)', data: {{ ab_ctr|tojson }}, backgroundColor: ['#94a3b8', '#3b82f6'] },
+            { label: 'CVR (%)', data: {{ ab_cvr|tojson }}, backgroundColor: ['#cbd5e1', '#10b981'] }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+    }
+});
+</script>
+{% endblock %}

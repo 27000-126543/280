@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}推荐结果 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>💡 推荐结果</h2>
+    <a href="{{ url_for('generate_all_recommendations') }}" class="btn btn-primary">
+        🔄 批量生成推荐
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if recommendations_data %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>用户ID</th>
+                        <th>推荐数量</th>
+                        <th>平均预估CTR</th>
+                        <th>生成时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_id, data in recommendations_data.items() %}
+                    <tr>
+                        <td><code>{{ user_id }}</code></td>
+                        <td>{{ data.count }}</td>
+                        <td>{{ "%.2f"|format(data.avg_ctr * 100) }}%</td>
+                        <td>{{ data.generated_at }}</td>
+                        <td>
+                            <a href="{{ url_for('user_detail', user_id=user_id) }}" class="btn btn-sm btn-outline-primary">
+                                查看详情
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <p class="mb-3">暂无推荐数据</p>
+            <a href="{{ url_for('generate_all_recommendations') }}" class="btn btn-primary">
+                点击生成全部推荐
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

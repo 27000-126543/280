@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}明细查询 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">🔍 推荐明细查询</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('query_page') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">用户ID</label>
+                    <input type="text" name="user_id" class="form-control" value="{{ query_params.user_id or '' }}" placeholder="输入用户ID">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">推送渠道</label>
+                    <select name="channel" class="form-select">
+                        <option value="">全部</option>
+                        <option value="email" {% if query_params.channel == 'email' %}selected{% endif %}>邮件</option>
+                        <option value="in_app" {% if query_params.channel == 'in_app' %}selected{% endif %}>站内信</option>
+                        <option value="sms" {% if query_params.channel == 'sms' %}selected{% endif %}>短信</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">开始时间</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ query_params.start_date or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">结束时间</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ query_params.end_date or '' }}">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12 d-flex justify-content-between">
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            🔍 查询
+                        </button>
+                        <a href="{{ url_for('query_page') }}" class="btn btn-outline-secondary ms-2">
+                            重置
+                        </a>
+                    </div>
+                    <div>
+                        {% if records %}
+                        <a href="{{ url_for('export_query', **query_params) }}" class="btn btn-success">
+                            📥 导出Excel
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if records is not none %}
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">查询结果 (共 {{ records|length }} 条)</h5>
+    </div>
+    <div class="card-body">
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>推送ID</th>
+                        <th>用户ID</th>
+                        <th>渠道</th>
+                        <th>状态</th>
+                        <th>发送时间</th>
+                        <th>点击时间</th>
+                        <th>转化价值</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td><code class="small">{{ record.push_id[:16] }}...</code></td>
+                        <td><code>{{ record.user_id }}</code></td>
+                        <td>
+                            {% if record.channel == 'email' %}
+                            <span class="badge bg-primary">📧 邮件</span>
+                            {% elif record.channel == 'in_app' %}
+                            <span class="badge bg-info">💬 站内信</span>
+                            {% else %}
+                            <span class="badge bg-success">📱 短信</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.status == 'sent' %}
+                            <span class="badge bg-secondary">已发送</span>
+                            {% elif record.status == 'opened' %}
+                            <span class="badge bg-info">已打开</span>
+                            {% elif record.status == 'clicked' %}
+                            <span class="badge bg-primary">已点击</span>
+                            {% elif record.status == 'converted' %}
+                            <span class="badge bg-success">已转化</span>
+                            {% elif record.status == 'failed' %}
+                            <span class="badge bg-danger">发送失败</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ record.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ record.send_time[:16] if record.send_time else '-' }}</td>
+                        <td class="small">{{ record.click_time[:16] if record.click_time else '-' }}</td>
+                        <td>
+                            {% if record.conversion_value and record.conversion_value > 0 %}
+                            <span class="text-success">¥{{ "%.2f"|format(record.conversion_value) }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="showDetail('{{ record.push_id }}')">
+                                详情
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <p>没有找到匹配的记录</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">推送详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <!-- 详情内容动态加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const recordsData = {{ records_json|tojson }};
+
+function showDetail(pushId) {
+    const record = recordsData.find(r => r.push_id === pushId);
+    if (record) {
+        let itemsHtml = '';
+        if (record.recommend_items && record.recommend_items.length > 0) {
+            itemsHtml = '<h6>推荐商品列表：</h6><ul class="list-group">';
+            record.recommend_items.forEach(item => {
+                itemsHtml += `<li class="list-group-item">
+                    <strong>${item.title}</strong>
+                    <span class="badge bg-info ms-2">CTR: ${(item.predicted_ctr * 100).toFixed(2)}%</span>
+                    ${item.price ? '<span class="text-danger ms-2">¥' + item.price.toFixed(2) + '</span>' : ''}
+                    <br><small class="text-muted">${item.reason || ''}</small>
+                </li>`;
+            });
+            itemsHtml += '</ul>';
+        }
+
+        document.getElementById('detailContent').innerHTML = `
+            <table class="table table-borderless">
+                <tr><th style="width: 120px;">推送ID:</th><td><code>${record.push_id}</code></td></tr>
+                <tr><th>用户ID:</th><td><code>${record.user_id}</code></td></tr>
+                <tr><th>渠道:</th><td>${record.channel}</td></tr>
+                <tr><th>状态:</th><td>${record.status}</td></tr>
+                <tr><th>发送时间:</th><td>${record.send_time || '-'}</td></tr>
+                <tr><th>打开时间:</th><td>${record.open_time || '-'}</td></tr>
+                <tr><th>点击时间:</th><td>${record.click_time || '-'}</td></tr>
+                <tr><th>转化时间:</th><td>${record.conversion_time || '-'}</td></tr>
+                <tr><th>转化价值:</th><td>¥${(record.conversion_value || 0).toFixed(2)}</td></tr>
+                <tr><th>AB测试组:</th><td>${record.ab_test_group || '-'}</td></tr>
+            </table>
+            <hr>
+            ${itemsHtml}
+        `;
+        new bootstrap.Modal(document.getElementById('detailModal')).show();
+    }
+}
+</script>
+{% endblock %}

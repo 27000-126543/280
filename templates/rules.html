@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}推荐规则 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>⚙️ 推荐规则</h2>
+    <a href="{{ url_for('create_rule_page') }}" class="btn btn-primary">
+        ➕ 创建新规则
+    </a>
+</div>
+
+{% if rules %}
+<div class="row">
+    {% for rule in rules %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ rule.name }}</h5>
+                {% if rule.enabled %}
+                <span class="badge bg-success">已启用</span>
+                {% else %}
+                <span class="badge bg-secondary">已禁用</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{ rule.description }}</p>
+                <div class="mb-3">
+                    <strong>优先级:</strong> {{ rule.priority }}
+                </div>
+                <div class="mb-3">
+                    <strong>适用条件:</strong>
+                    <ul class="mt-2">
+                        {% for key, value in rule.conditions.items() %}
+                        <li><code>{{ key }}</code>: {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="mb-3">
+                    <strong>执行动作:</strong>
+                    <ul class="mt-2">
+                        {% for key, value in rule.actions.items() %}
+                        <li><code>{{ key }}</code>: {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if rule.start_time or rule.end_time %}
+                <div class="text-muted small">
+                    有效期: {{ rule.start_time[:10] if rule.start_time else '不限' }} - {{ rule.end_time[:10] if rule.end_time else '不限' }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('toggle_rule', rule_id=rule.rule_id) }}" class="btn btn-sm btn-outline-{% if rule.enabled %}warning{% else %}success{% endif %}">
+                        {% if rule.enabled %}禁用{% else %}启用{% endif %}
+                    </a>
+                    <a href="{{ url_for('delete_rule', rule_id=rule.rule_id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除此规则吗？')">
+                        删除
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <p class="text-muted mb-3">暂无推荐规则</p>
+        <a href="{{ url_for('create_rule_page') }}" class="btn btn-primary">
+            创建第一条规则
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

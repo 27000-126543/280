@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}创建规则 - 智能推荐系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>➕ 创建推荐规则</h2>
+    <a href="{{ url_for('rules_list') }}" class="btn btn-outline-secondary">
+        返回规则列表
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('create_rule_page') }}">
+                    <div class="mb-3">
+                        <label class="form-label">规则名称 *</label>
+                        <input type="text" name="name" class="form-control" required placeholder="例如：618大促优惠规则">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">规则描述</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="描述该规则的作用和场景"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">优先级 (数字越大优先级越高)</label>
+                        <input type="number" name="priority" class="form-control" value="10" min="0" max="1000">
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">🎯 适用条件</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">目标用户生命周期</label>
+                            <select name="lifecycle_stage" class="form-select">
+                                <option value="">不限</option>
+                                <option value="new">新用户</option>
+                                <option value="active">活跃用户</option>
+                                <option value="at_risk">流失风险用户</option>
+                                <option value="dormant">沉睡用户</option>
+                                <option value="churned">已流失用户</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">用户标签 (逗号分隔)</label>
+                            <input type="text" name="user_tags" class="form-control" placeholder="例如：电子产品, 高端用户">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">最低消费金额</label>
+                            <input type="number" name="min_total_spent" class="form-control" placeholder="不限" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">最低订单数</label>
+                            <input type="number" name="min_orders" class="form-control" placeholder="不限" min="0">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">生效开始时间</label>
+                            <input type="datetime-local" name="start_time" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">生效结束时间</label>
+                            <input type="datetime-local" name="end_time" class="form-control">
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">⚡ 执行动作</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">提升权重的标签 (逗号分隔)</label>
+                            <input type="text" name="boost_tags" class="form-control" placeholder="例如：618特惠, 限时折扣">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">提升权重倍数</label>
+                            <input type="number" name="boost_weight" class="form-control" value="2.0" step="0.1" min="1.0" max="10.0">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">强制推荐的标签 (逗号分隔)</label>
+                            <input type="text" name="force_include_tags" class="form-control" placeholder="例如：爆款, 新品首发">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">最大强制推荐数</label>
+                            <input type="number" name="max_include" class="form-control" value="3" min="1" max="10">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">自定义推荐理由</label>
+                        <input type="text" name="custom_message" class="form-control" placeholder="例如：618专属特惠，为您精选！">
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            ✅ 创建规则
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">💡 快速模板</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="applyTemplate('new_user')">
+                        👤 新用户专享
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="applyTemplate('holiday')">
+                        🎉 节日促销
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" onclick="applyTemplate('recall')">
+                        🔄 流失用户召回
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="applyTemplate('vip')">
+                        👑 VIP用户专属
+                    </button>
+                </div>
+                <hr>
+                <h6 class="mt-3">规则说明：</h6>
+                <ul class="small text-muted">
+                    <li>优先级高的规则会先执行</li>
+                    <li>满足条件的规则动作会叠加应用</li>
+                    <li>时间限制可选，不填则永久有效</li>
+                    <li>系统会自动检测规则冲突并合并</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyTemplate(template) {
+    const templates = {
+        new_user: {
+            name: '新用户专享优惠',
+            description: '针对新用户的专属优惠推荐策略',
+            lifecycle_stage: 'new',
+            boost_tags: '新人专享,首单优惠',
+            boost_weight: '3.0',
+            force_include_tags: '新人专享',
+            max_include: '5',
+            custom_message: '新用户专享优惠，限时抢购！'
+        },
+        holiday: {
+            name: '节日促销活动',
+            description: '节日期间的促销推荐策略',
+            boost_tags: '节日特惠,限时折扣,爆款',
+            boost_weight: '2.5',
+            force_include_tags: '节日特惠',
+            max_include: '3',
+            custom_message: '节日特惠，精选好货等你来！'
+        },
+        recall: {
+            name: '流失用户召回',
+            description: '针对流失风险和沉睡用户的召回策略',
+            lifecycle_stage: 'at_risk',
+            boost_tags: '回归礼包,专属优惠,大额券',
+            boost_weight: '3.0',
+            force_include_tags: '回归礼包',
+            max_include: '5',
+            custom_message: '好久不见，专属福利送给您！'
+        },
+        vip: {
+            name: 'VIP用户专属推荐',
+            description: '高价值用户的专属推荐策略',
+            min_total_spent: '1000',
+            min_orders: '5',
+            boost_tags: '会员专享,高端精选,限量款',
+            boost_weight: '2.0',
+            force_include_tags: '会员专享',
+            max_include: '3',
+            custom_message: 'VIP专属，为您精选高端好物！'
+        }
+    };
+
+    const t = templates[template];
+    if (t) {
+        document.querySelector('[name="name"]').value = t.name;
+        document.querySelector('[name="description"]').value = t.description;
+        if (t.lifecycle_stage) document.querySelector('[name="lifecycle_stage"]').value = t.lifecycle_stage;
+        if (t.min_total_spent) document.querySelector('[name="min_total_spent"]').value = t.min_total_spent;
+        if (t.min_orders) document.querySelector('[name="min_orders"]').value = t.min_orders;
+        document.querySelector('[name="boost_tags"]').value = t.boost_tags;
+        document.querySelector('[name="boost_weight"]').value = t.boost_weight;
+        document.querySelector('[name="force_include_tags"]').value = t.force_include_tags;
+        document.querySelector('[name="max_include"]').value = t.max_include;
+        document.querySelector('[name="custom_message"]').value = t.custom_message;
+    }
+}
+</script>
+{% endblock %}
